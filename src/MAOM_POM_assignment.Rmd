@@ -1,0 +1,75 @@
+---
+title: "MAOM and POM NEON assignment"
+output: pdf_document
+date: "2022-10-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This first code chunk formats your data - be sure to change for your file path and your site.
+
+```{r cars}
+#loading packages
+library(tidyr)
+library(ggplot2)
+
+#formatting data
+
+#import data 
+NEON_MAOMPOM <- read.csv("../data/NEON_POMMAOMdata.csv")
+
+#select your site and just the top soil layer (0-15cm)
+N_MP_CPER <- NEON_MAOMPOM[NEON_MAOMPOM$Site== "CPER" & NEON_MAOMPOM$layer== "M1", ]
+
+```
+
+
+This second code chunk creates box plots with fixed axes and unfixed axes
+```{r}
+#boxplot of MAOM and POM with y axis as 0-250 mg C/g soil
+#rename variables
+N_MP_CPER$POM <- N_MP_CPER$POMC_mg_gsoil
+N_MP_CPER$MAOM <- N_MP_CPER$MAOMC_mg_gsoil
+#stack to have MAOM and POM on top of one another
+NMP_CPER_stacked <-gather(N_MP_CPER, "SOM_frac", "C_conc", 5:6)
+#plot with specific axes
+ggplot(NMP_CPER_stacked, aes(y=C_conc, x=SOM_frac, fill=SOM_frac)) +
+  geom_boxplot()+ scale_fill_brewer(palette="YlGnBu") + ggtitle("CPER") + ylim(0,250) +
+  xlab("SOM fraction") + ylab("Soil C (mg C/g soil)") + theme(legend.position="none")
+#plot without specific axes - remove ylim code
+ggplot(NMP_CPER_stacked, aes(y=C_conc, x=SOM_frac, fill=SOM_frac)) +
+  geom_boxplot()+ scale_fill_brewer(palette="YlGnBu") + ggtitle("CPER") + 
+  xlab("SOM fraction") + ylab("Soil C (mg C/g soil)") + theme(legend.position="none")
+
+```
+
+This third code chunk creates plots of POM and MAOM regressed against environmental variables
+```{r}
+#back to full dataset
+NMP_stacked <-gather(NEON_MAOMPOM, "SOM_frac", "C_conc", 5:6)
+
+#MAT
+ggplot(NMP_stacked, aes(x=MAT,y=C_conc, color=SOM_frac)) + geom_point() + geom_smooth(method="lm", se=TRUE) + 
+    xlab("MAT (degrees C)") + ylab("Soil C (mg C/g soil)") +
+    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+#MAP
+ggplot(NMP_stacked, aes(x=MAP,y=C_conc, color=SOM_frac)) + geom_point() + geom_smooth(method="lm", se=TRUE) + 
+    xlab("MAP (mm)") + ylab("Soil C (mg C/g soil)") +
+    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+#initial_pH
+ggplot(NMP_stacked, aes(x=initial_pH,y=C_conc, color=SOM_frac)) + geom_point() + geom_smooth(method="lm", se=TRUE) + 
+    xlab("Soil pH") + ylab("Soil C (mg C/g soil)") +
+    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+#silt_clay
+ggplot(NMP_stacked, aes(x=silt_clay, y=C_conc, color=SOM_frac)) + geom_point() + geom_smooth(method="lm", se=TRUE) + 
+    xlab("Silt+clay (%)") + ylab("Soil C (mg C/g soil)") +
+    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+

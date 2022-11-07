@@ -1,0 +1,202 @@
+---
+title: "ECOL 610: NEON Data - MAOM and POM"
+author: "Group - Santa Rita Experimental Range (SRER)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+linkcolor: blue
+header-includes:
+  - \usepackage{caption}
+  - \captionsetup[figure]{labelformat=empty}
+editor_options: 
+  chunk_output_type: console
+knit: (function(inputFile, encoding){ 
+    out_dir <- '../';
+    rmarkdown::render(inputFile, encoding = encoding, output_file=file.path(dirname(inputFile), out_dir, 'ecol610_NEON_MAOMandPOM.pdf')) 
+  })
+---
+
+# Group Members
+
+  - Emily Swartz
+  - Shahriar Shah Heydari
+  - Stephanie Cardinalli
+  - George Woolsey
+
+# Objective
+
+Modify the provided code for CPER for your site and then complete the following assignment.
+
+1) Create two boxplots with MAOM and POM carbon concentrations using common axes values provided in the code and with unrestricted axes (removing the ylim() part of the function).
+
+How does your site’s MAOM and POM C concentrations compare to the CPER? Why might they be higher or lower?
+
+2) Recreate the regressions of SOM fraction C concentrations against environmental variables (4 plots with POM and MAOM on each plot).
+
+Which environmental variable appears to be most strongly related to MAOM? To POM? Do these variables align with your understanding of MAOM and POM formation and loss? How so?
+
+# Setup
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE
+  , warning = FALSE
+  , message = FALSE
+  , fig.height = 7
+  , fig.width = 9
+)
+```
+
+Load in the needed packages
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(viridis)
+library(RColorBrewer)
+library(scales)
+library(latex2exp)
+library(kableExtra)
+remove(list=ls())
+# what is your site name?
+site <- "Santa Rita Experimental Range"
+site_abbr <- "SRER"
+```
+
+# Load Data
+
+```{r}
+#import data 
+neon_maompom <- read.csv("../data/NEON_POMMAOMdata.csv") %>% 
+  dplyr::rename_with(~ tolower(
+    gsub(" ", "_", 
+       stringr::str_trim(gsub("\\s+", " ", .x))
+    )
+  )) %>% 
+  dplyr::filter(layer == "M1") # M1 = top soil layer (0-15cm) 
+# quick view data
+neon_maompom %>% 
+  dplyr::glimpse()
+```
+
+# Question 1
+
+Create two boxplots with MAOM and POM carbon concentrations using common axes values provided in the code and with unrestricted axes (removing the ylim() part of the function).
+
+How does your site’s MAOM and POM C concentrations compare to the CPER? Why might they be higher or lower?
+
+```{r}
+# pivot pom and maom to long
+neon_maompom_long <- neon_maompom %>% 
+  dplyr::rename(
+    pom = pomc_mg_gsoil
+    , maom = maomc_mg_gsoil
+  ) %>% 
+  tidyr::pivot_longer(
+    cols = tidyselect::all_of(c("pom", "maom"))
+    , names_to = "som_frac"
+    , values_to = "c_conc"
+    , values_drop_na = FALSE
+  ) %>% 
+  dplyr::mutate(
+    som_frac = toupper(som_frac) #, " ( mg C \cdot g^{-1} soil")
+  ) %>% 
+  dplyr::arrange(site, id, som_frac)
+
+# define plot
+plt_nolim <- ggplot(
+    data = neon_maompom_long %>% 
+        dplyr::filter(site %in% c(site_abbr, "CPER"))
+    , mapping = aes(y = c_conc, x = som_frac, fill = som_frac)
+  ) +
+  geom_boxplot() + 
+  facet_grid(~site) +
+  scale_fill_brewer(palette="YlGnBu") + 
+  xlab("SOM fraction") + 
+  ylab(latex2exp::TeX("Soil C (mg C $\\cdot g^{-1}$ soil)")) +
+  labs(
+    title = "SOM fraction"
+    , subtitle = paste0("CPER and ", site_abbr)
+  ) + 
+  theme_bw() +
+  theme(legend.position="none") 
+
+#boxplot of MAOM and POM with y axis as 0-250 mg C/g soil
+plt_nolim +
+  scale_y_continuous(limits = c(0,250))
+
+#plot without specific axes - remove ylim code
+plt_nolim
+
+
+```
+
+## Response
+
+How does your site’s MAOM and POM C concentrations compare to the CPER? Why might they be higher or lower?
+
+\textcolor{violet}{The median Particulate organic matter (POM) at the Santa Rita Experimental Range (SRER) is `r median((neon_maompom %>% dplyr::filter(site %in% c(site_abbr)))$pomc_mg_gsoil) %>% scales::comma(accuracy = 0.01)` compared to `r median((neon_maompom %>% dplyr::filter(site %in% c("CPER")))$pomc_mg_gsoil) %>% scales::comma(accuracy = 0.01)` at the Central Plains Experimental Range (CPER). The median mineral-associated organic matter (MAOM) at SRER is `r median((neon_maompom %>% dplyr::filter(site %in% c(site_abbr)))$maomc_mg_gsoil) %>% scales::comma(accuracy = 0.01)` compared to `r median((neon_maompom %>% dplyr::filter(site %in% c("CPER")))$maomc_mg_gsoil) %>% scales::comma(accuracy = 0.01)` at CPER. The SRER site is located in the Sonoran Desert, is characterized by a semi-arid, hot climate, and has mean annual precipitation of 346.2 mm (13.6 in.) each year (}[NEON SRER](https://www.neonscience.org/field-sites/srer)\textcolor{violet}{). The CPER is located in the Central Plains region with dry, hot summers and cold winters, and mean annual precipitation is 344.2 mm (13.6 in.) each year (}[NEON CPER](https://www.neonscience.org/field-sites/cper)\textcolor{violet}{). These two sites have similar MAOM and POM carbon concentrations which is likely a result of the similar precipitation limitation at both sites. This precipitation limitation likely leads to reduced primary productivity (i.e. photosynthetically-derived carbon biomass) compared to cooler, wetter sites. The semi-arid, hot climate at SRER likely further limits this productivity below the levels at CPER.}
+
+# Question 2
+
+Recreate the regressions of SOM fraction C concentrations against environmental variables (4 plots with POM and MAOM on each plot).
+
+Which environmental variable appears to be most strongly related to MAOM? To POM? Do these variables align with your understanding of MAOM and POM formation and loss? How so?
+
+```{r, results=FALSE}
+vars_temp <- c(
+  "mat"
+  , "map"
+  , "initial_ph"
+  , "silt_clay"
+)
+vars_lab_temp <- c(
+  "Mean annual temperature (°C)"
+  , "Mean annual precipitation (mm)"
+  , "Soil pH"
+  , "Silt+Clay %"
+)
+# define plot function
+  p_fn <- function(my_var) {
+  #plot
+  (
+    neon_maompom_long %>% 
+    ggplot(.
+      , mapping = aes_string(x = my_var, y = "c_conc", color = "som_frac")
+    ) + 
+    geom_point() + 
+    geom_smooth(method="lm", se=TRUE) + 
+    xlab(vars_lab_temp[which(vars_temp == my_var)]) +
+    ylab(latex2exp::TeX("Soil C (mg C $\\cdot g^{-1}$ soil)")) +
+    labs(
+      subtitle = vars_lab_temp[which(vars_temp == my_var)]
+    ) +
+    theme_bw(base_size = 16) + 
+    theme(
+      panel.grid.major = element_blank()
+      , panel.grid.minor = element_blank()
+      , legend.title = element_blank()
+      , legend.position = "bottom"
+      , legend.direction = "horizontal"
+    )
+  )
+  
+}
+# call function
+vars_temp %>% 
+  purrr::map(p_fn)
+  
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE, include=FALSE}
+remove(list = ls()[grep("_temp",ls())])
+gc()
+```
+
+## Response
+
+Which environmental variable appears to be most strongly related to MAOM? To POM? Do these variables align with your understanding of MAOM and POM formation and loss? How so?
+
+\textcolor{violet}{Mean annual precipitation (mm) has a strong positive relationship with POM while soil pH and silt and clay concentration in the soil have negative relationships with POM. It makes sense that POM would have a strong positive association with precipitation with primary productivity increasing at wetter sites resulting in an increased soil organic matter pool. The negative relationship with soil pH is intuitive when considering that the range of observed values is only between `r min(neon_maompom$initial_ph) %>% scales::comma(accuracy = .1)` and `r max(neon_maompom$initial_ph) %>% scales::comma(accuracy = .1)`. The lower pH levels (more acidic) increase the accumulation of organic matter compared to more neutral pH levels favorable to life (e.g. microbial decomposers). Mean annual temperature has a slight negative relationship with MAOM while silt and clay concentration in the soil has a slight positive relationships with MAOM. This relationship is as expected with clay and silt particles protecting soil organic matter from decomposition through association with soil minerals. In addition, the negative relationship between temperature and MAOM is likely the result of decreased availabilty of chemical constituents (e.g. amino sugars) and minerals and low molecular weight compounds associated with MAOM.}
